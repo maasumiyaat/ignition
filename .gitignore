@@ -1,0 +1,372 @@
+# ============================================================================
+# .gitignore for Ansible Infrastructure Automation
+# Place this in the root of your ignition/ directory
+# ============================================================================
+
+# ============================================================================
+# CRITICAL: Secrets and Credentials - NEVER COMMIT THESE
+# ============================================================================
+
+# Configuration file with all secrets (NEVER COMMIT)
+config.yaml
+config.yml
+
+# Ansible Vault password files
+.vault_pass
+.vault_password
+vault_pass.txt
+vault_password.txt
+*vault_pass*
+*vault_password*
+
+# Unencrypted variable files (if you accidentally decrypted them)
+group_vars/all.yml.decrypted
+group_vars/**/unencrypted_*
+host_vars/**/unencrypted_*
+**/secrets.yml
+**/credentials.yml
+
+# SSH keys
+*.pem
+*.key
+*_rsa
+*_rsa.pub
+*_ed25519
+*_ed25519.pub
+id_rsa
+id_rsa.pub
+deploy_key
+deploy_key.pub
+*.ppk
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.production
+.env.staging
+*.env
+
+# Certificate files
+*.crt
+*.key
+*.csr
+*.p12
+*.pfx
+*.cer
+
+# Database dumps and backups (in case you pull them locally)
+*.sql
+*.dump
+*.backup
+dumps/
+backups/
+*.tar.gz.enc
+*.tar.gz
+
+# ============================================================================
+# Ansible Generated Files
+# ============================================================================
+
+# Ansible retry files
+*.retry
+
+# Ansible facts cache
+facts.d/
+.facts/
+ansible_facts/
+
+# Ansible collections and roles (if using requirements)
+collections/
+roles/downloaded/
+
+# Ansible cache
+.ansible/
+*.cache
+
+# ============================================================================
+# Python / Ansible Environment
+# ============================================================================
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.pyenv/
+virtualenv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# ============================================================================
+# Editor and IDE Files
+# ============================================================================
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# JetBrains IDEs (PyCharm, IntelliJ, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.*.sw[a-z]
+*.un~
+Session.vim
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Atom
+.atom/
+
+# ============================================================================
+# Operating System Files
+# ============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# ============================================================================
+# Logs and Temporary Files
+# ============================================================================
+
+# Log files
+*.log
+logs/
+*.log.*
+log/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+.tmp/
+
+# ============================================================================
+# Documentation Build Files
+# ============================================================================
+
+# Sphinx documentation
+docs/_build/
+docs/.doctrees/
+
+# MkDocs
+site/
+
+# ============================================================================
+# Terraform State (if you mix Terraform with Ansible)
+# ============================================================================
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+override.tf
+override.tf.json
+
+# ============================================================================
+# Custom Additions
+# ============================================================================
+
+# Local development overrides
+inventory.local.ini
+inventory.dev.ini
+*local.yml
+*local.ini
+
+# Downloaded artifacts
+downloads/
+artifacts/
+
+# Test outputs
+test_output/
+test_results/
+
+# Personal notes (you might keep notes locally)
+NOTES.md
+TODO.md
+notes/
+scratch/
+
+# ============================================================================
+# IMPORTANT: Files You SHOULD Commit
+# ============================================================================
+
+# These files should be committed (removing from ignore):
+# - inventory.ini (without IPs if sensitive, or use inventory templates)
+# - group_vars/all.yml (ONLY if properly Ansible Vault encrypted)
+# - All playbooks (*.yml in playbooks/)
+# - All templates (*.j2 in templates/)
+# - README.md
+# - This .gitignore file
+
+# ============================================================================
+# Safety Net: Catch-all for common secret patterns
+# ============================================================================
+
+# Files with "secret", "private", "password" in the name
+*secret*
+*private*
+*password*
+*credential*
+*token*
+
+# Except for templates and examples
+!*example*
+!*template*
+!*.j2
+!README.md
+
+# Configuration files that might contain secrets
+config.json
+config.yaml
+config.yml
+settings.json
+settings.yaml
+settings.yml
+
+# API keys and tokens
+*api_key*
+*api-key*
+*apikey*
+*access_token*
+*access-token*
+
+# ============================================================================
+# Additional Security Patterns
+# ============================================================================
+
+# Kubeconfig files (if you integrate with Kubernetes)
+*kubeconfig*
+*.kubeconfig
+
+# Cloud provider credentials
+*aws_credentials*
+*gcp_credentials*
+*azure_credentials*
+credentials.json
+
+# Docker-related (in case someone adds Docker later)
+docker-compose.override.yml
+.dockerignore
+
+# Binary executables
+*.exe
+*.dll
+*.dylib
+
+# Compiled source
+*.com
+*.class
+*.o
+*.a
+
+# Package manager files with lock versions (optional, some prefer to commit these)
+# Uncomment if you want to ignore:
+# package-lock.json
+# yarn.lock
+# Gemfile.lock
+
+# ============================================================================
+# END OF .GITIGNORE
+# ============================================================================
+
+# Pro tip: Use 'git status' to verify no sensitive files are staged
+# Pro tip: Use 'git secrets' tool to scan for accidental secret commits
+# Pro tip: Run 'git log --all --full-history -- "*vault*"' to check vault history

@@ -1,0 +1,298 @@
+# ============================================================================
+# FILE: config.example.yaml
+# Copy this to config.yaml and fill in your actual values
+# config.yaml is gitignored and will never be committed
+# ============================================================================
+
+# ============================================================================
+# SERVER CONFIGURATION
+# ============================================================================
+server:
+  hostname: YOUR_SERVER_IP_OR_DOMAIN
+  ssh_user: root
+  ssh_key_path: ~/.ssh/id_rsa
+
+# ============================================================================
+# DEPLOYMENT USER
+# ============================================================================
+deployment:
+  user: deployer
+  user_home: /home/deployer
+
+# ============================================================================
+# GITHUB CONFIGURATION
+# ============================================================================
+github:
+  organization: your-github-org
+  ssh_deploy_key: |
+    -----BEGIN OPENSSH PRIVATE KEY-----
+    PASTE_YOUR_GITHUB_DEPLOY_KEY_HERE
+    -----END OPENSSH PRIVATE KEY-----
+
+# ============================================================================
+# DOMAIN CONFIGURATION
+# ============================================================================
+domain:
+  base_domain: example.com
+  certbot_email: admin@example.com
+
+# ============================================================================
+# DATABASE CONFIGURATION
+# ============================================================================
+database:
+  postgresql:
+    version: 17
+    admin_user: postgres
+    admin_password: CHANGE_TO_STRONG_PASSWORD_HERE
+    port: 5432
+  
+  redis:
+    password: CHANGE_TO_STRONG_REDIS_PASSWORD_HERE
+    port: 6379
+
+# ============================================================================
+# BACKUP CONFIGURATION
+# ============================================================================
+backup:
+  directory: /var/backups/automated
+  encryption_key: CHANGE_TO_STRONG_ENCRYPTION_KEY_32_CHARS_MIN
+  retention_days: 30
+
+# ============================================================================
+# SERVICES CONFIGURATION
+# Each service has its own config.yaml in the repo
+# We only need: name, type, repo, ports, and database info
+# ============================================================================
+services:
+  - name: auth-service
+    type: go
+    github_repo: auth-service
+    backend_port: 8001
+    frontend_enabled: true
+    frontend_port: 3001
+    database_enabled: true
+    database_name: auth_db
+    run_migrations: true
+    
+  - name: user-service
+    type: go
+    github_repo: user-service
+    backend_port: 8002
+    frontend_enabled: true
+    frontend_port: 3002
+    database_enabled: true
+    database_name: user_db
+    run_migrations: true
+    
+  - name: payment-service
+    type: node
+    github_repo: payment-service
+    backend_port: 8003
+    frontend_enabled: false
+    database_enabled: true
+    database_name: payment_db
+    run_migrations: true
+    
+  - name: notification-service
+    type: node
+    github_repo: notification-service
+    backend_port: 8004
+    frontend_enabled: false
+    database_enabled: true
+    database_name: notification_db
+    run_migrations: true
+
+  - name: analytics-service
+    type: go
+    github_repo: analytics-service
+    backend_port: 8005
+    frontend_enabled: true
+    frontend_port: 3003
+    database_enabled: true
+    database_name: analytics_db
+    run_migrations: true
+
+  - name: order-service
+    type: go
+    github_repo: order-service
+    backend_port: 8006
+    frontend_enabled: false
+    database_enabled: true
+    database_name: order_db
+    run_migrations: true
+
+  - name: inventory-service
+    type: node
+    github_repo: inventory-service
+    backend_port: 8007
+    frontend_enabled: true
+    frontend_port: 3004
+    database_enabled: true
+    database_name: inventory_db
+    run_migrations: true
+
+  - name: catalog-service
+    type: go
+    github_repo: catalog-service
+    backend_port: 8008
+    frontend_enabled: true
+    frontend_port: 3005
+    database_enabled: true
+    database_name: catalog_db
+    run_migrations: true
+
+  - name: review-service
+    type: node
+    github_repo: review-service
+    backend_port: 8009
+    frontend_enabled: false
+    database_enabled: true
+    database_name: review_db
+    run_migrations: true
+
+  - name: search-service
+    type: go
+    github_repo: search-service
+    backend_port: 8010
+    frontend_enabled: false
+    database_enabled: true
+    database_name: search_db
+    run_migrations: true
+
+  - name: recommendation-service
+    type: go
+    github_repo: recommendation-service
+    backend_port: 8011
+    frontend_enabled: false
+    database_enabled: true
+    database_name: recommendation_db
+    run_migrations: true
+
+  - name: shipping-service
+    type: node
+    github_repo: shipping-service
+    backend_port: 8012
+    frontend_enabled: false
+    database_enabled: true
+    database_name: shipping_db
+    run_migrations: true
+
+  - name: customer-service
+    type: go
+    github_repo: customer-service
+    backend_port: 8013
+    frontend_enabled: true
+    frontend_port: 3006
+    database_enabled: true
+    database_name: customer_db
+    run_migrations: true
+
+  - name: reporting-service
+    type: node
+    github_repo: reporting-service
+    backend_port: 8014
+    frontend_enabled: true
+    frontend_port: 3007
+    database_enabled: true
+    database_name: reporting_db
+    run_migrations: true
+
+  - name: webhook-service
+    type: go
+    github_repo: webhook-service
+    backend_port: 8015
+    frontend_enabled: false
+    database_enabled: true
+    database_name: webhook_db
+    run_migrations: true
+
+  - name: email-service
+    type: go
+    github_repo: email-service
+    backend_port: 8016
+    frontend_enabled: false
+    database_enabled: false
+    run_migrations: false
+
+  - name: sms-service
+    type: node
+    github_repo: sms-service
+    backend_port: 8017
+    frontend_enabled: false
+    database_enabled: true
+    database_name: sms_db
+    run_migrations: true
+
+  - name: file-storage-service
+    type: go
+    github_repo: file-storage-service
+    backend_port: 8018
+    frontend_enabled: false
+    database_enabled: true
+    database_name: file_storage_db
+    run_migrations: true
+
+  - name: audit-service
+    type: node
+    github_repo: audit-service
+    backend_port: 8019
+    frontend_enabled: false
+    database_enabled: true
+    database_name: audit_db
+    run_migrations: true
+
+  - name: metrics-service
+    type: go
+    github_repo: metrics-service
+    backend_port: 8020
+    frontend_enabled: true
+    frontend_port: 3008
+    database_enabled: true
+    database_name: metrics_db
+    run_migrations: true
+
+  - name: billing-service
+    type: node
+    github_repo: billing-service
+    backend_port: 8021
+    frontend_enabled: false
+    database_enabled: true
+    database_name: billing_db
+    run_migrations: true
+
+  - name: subscription-service
+    type: go
+    github_repo: subscription-service
+    backend_port: 8022
+    frontend_enabled: false
+    database_enabled: true
+    database_name: subscription_db
+    run_migrations: true
+
+  - name: chat-service
+    type: node
+    github_repo: chat-service
+    backend_port: 8023
+    frontend_enabled: true
+    frontend_port: 3009
+    database_enabled: true
+    database_name: chat_db
+    run_migrations: true
+
+  - name: media-service
+    type: go
+    github_repo: media-service
+    backend_port: 8024
+    frontend_enabled: false
+    database_enabled: true
+    database_name: media_db
+    run_migrations: true
+
+  - name: location-service
+    type: node
+    github_repo: location-service
+    backend_port: 8025
+    frontend_enabled: false
+    database_enabled: true
+    database_name: location_db
+    run_migrations: true

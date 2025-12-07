@@ -1,0 +1,35 @@
+# ============================================================================
+# FILE: templates/systemd-service.j2
+# Systemd service template for both backend and frontend
+# ============================================================================
+
+[Unit]
+Description={{ service_item.name }}{% if is_frontend | default(false) %} Frontend{% endif %} Service
+After=network.target{% if service_item.database_enabled | default(false) %} postgresql.service redis-server.service{% endif %}
+
+[Service]
+Type=simple
+User={{ deploy_user }}
+{% if is_frontend | default(false) %}
+WorkingDirectory={{ deploy_user_home }}/apps/{{ service_item.name }}/frontend
+{% if service_item.type == 'node' %}
+ExecStart=/usr/bin/node {{ deploy_user_home }}/apps/{{ service_item.name }}/frontend/dist/index.js
+{% else %}
+ExecStart=/usr/bin/node {{ deploy_user_home }}/apps/{{ service_item.name }}/frontend/dist/server.js
+{% endif %}
+{% else %}
+WorkingDirectory={{ deploy_user_home }}/apps/{{ service_item.name }}
+{% if service_item.type == 'go' %}
+ExecStart={{ deploy_user_home }}/apps/{{ service_item.name }}/{{ service_item.name }}
+{% elif service_item.type == 'node' %}
+ExecStart=/usr/bin/node {{ deploy_user_home }}/apps/{{ service_item.name }}/dist/index.js
+{% endif %}
+{% endif %}
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier={{ service_item.name }}{% if is_frontend | default(false) %}-frontend{% endif %}
+
+[Install]
+WantedBy=multi-user.target

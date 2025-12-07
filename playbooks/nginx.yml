@@ -1,0 +1,110 @@
+# ============================================================================
+# FILE: playbooks/nginx.yml
+# Configure NGINX reverse proxy and SSL
+# ============================================================================
+
+- name: Configure NGINX for All Services
+  hosts: production
+  become: yes
+  vars_files:
+    - ../config.yaml
+  vars:
+    base_domain: "{{ domain.base_domain }}"
+    certbot_email: "{{ domain.certbot_email }}"
+    deploy_user: "{{ deployment.user }}"
+    deploy_user_home: "{{ deployment.user_home }}"
+
+  tasks:
+    - name: Remove default NGINX site
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Create NGINX config for backend services
+      template:
+        src: ../templates/nginx-site.conf.j2
+        dest: "/etc/nginx/sites-available/{{ item.name }}-api"
+        owner: root
+        group: root
+        mode: '0644'
+      loop: "{{ services }}"
+      vars:
+        service_type: backend
+        service_domain: "api.{{ item.name }}.{{ base_domain }}"
+        service_port: "{{ item.backend_port }}"
+        service_name: "{{ item.name }}"
+      notify: reload nginx
+
+    - name: Enable backend NGINX configs
+      file:
+        src: "/etc/nginx/sites-available/{{ item.name }}-api"
+        dest: "/etc/nginx/sites-enabled/{{ item.name }}-api"
+        state: link
+      loop: "{{ services }}"
+
+
+    - name: Create NGINX config for frontend services
+      template:
+        src: ../templates/nginx-site.conf.j2
+        dest: "/etc/nginx/sites-available/{{ item.name }}-app"
+        owner: root
+        group: root
+        mode: '0644'
+      loop: "{{ services }}"
+      when: item.frontend_enabled | default(false)
+      vars:
+        service_type: frontend
+        service_domain: "app.{{ item.name }}.{{ base_domain }}"
+        service_port: "{{ item.frontend_port }}"
+        service_name: "{{ item.name }}"
+        backend_port: "{{ item.backend_port }}"
+        frontend_dir: "{{ deploy_user_home }}/apps/{{ item.name }}/frontend"
+      notify: reload nginx
+
+    - name: Enable frontend NGINX configs
+      file:
+        src: "/etc/nginx/sites-available/{{ item.name }}-app"
+        dest: "/etc/nginx/sites-enabled/{{ item.name }}-app"
+        state: link
+      loop: "{{ services }}"
+      when: item.frontend_enabled | default(false)
+
+    - name: Test NGINX configuration
+      command: nginx -t
+      register: nginx_test
+      changed_when: false
+
+
+    - name: Reload NGINX
+      systemd:
+        name: nginx
+        state: reloaded
+      when: nginx_test.rc == 0
+
+    - name: Obtain SSL certificates for backend services
+      command: >
+        certbot --nginx -d api.{{ item.name }}.{{ base_domain }}
+        --non-interactive --agree-tos -m {{ certbot_email }}
+      loop: "{{ services }}"
+      ignore_errors: yes
+
+    - name: Obtain SSL certificates for frontend services
+      command: >
+        certbot --nginx -d app.{{ item.name }}.{{ base_domain }}
+        --non-interactive --agree-tos -m {{ certbot_email }}
+      loop: "{{ services }}"
+      when: item.frontend_enabled | default(false)
+      ignore_errors: yes
+
+    - name: Setup certbot renewal cron
+      cron:
+        name: "Certbot renewal"
+        minute: "0"
+        hour: "3"
+        job: "certbot renew --quiet --post-hook 'systemctl reload nginx'"
+
+  handlers:
+    - name: reload nginx
+      systemd:
+        name: nginx
+        state: reloaded

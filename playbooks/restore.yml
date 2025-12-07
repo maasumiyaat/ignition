@@ -1,0 +1,98 @@
+# ============================================================================
+# FILE: playbooks/restore.yml
+# Restore from backup
+# ============================================================================
+
+- name: Restore from Backup
+  hosts: production
+  become: yes
+  vars_files:
+    - ../config.yaml
+  vars:
+    deploy_user: "{{ deployment.user }}"
+    backup_dir: "{{ backup.directory }}"
+    postgres_password: "{{ database.postgresql.admin_password }}"
+    backup_encryption_key: "{{ backup.encryption_key }}"
+  vars_prompt:
+    - name: backup_timestamp
+      prompt: "Enter backup timestamp to restore (e.g., 1234567890)"
+      private: no
+  
+  tasks:
+    - name: Check if backup exists
+      stat:
+        path: "{{ backup_dir }}/{{ backup_timestamp }}.tar.gz.enc"
+      register: backup_file
+
+    - name: Fail if backup doesn't exist
+      fail:
+        msg: "Backup file not found: {{ backup_dir }}/{{ backup_timestamp }}.tar.gz.enc"
+      when: not backup_file.stat.exists
+
+    - name: Decrypt backup
+      shell: |
+        openssl enc -aes-256-cbc -d -salt -k "{{ backup_encryption_key }}" -in {{ backup_timestamp }}.tar.gz.enc | tar xzf -
+      args:
+        chdir: "{{ backup_dir }}"
+
+    - name: Stop all services
+      systemd:
+        name: "{{ item.name }}"
+        state: stopped
+      loop: "{{ services }}"
+      ignore_errors: yes
+
+    - name: Restore PostgreSQL databases
+      become_user: postgres
+      shell: |
+        psql -f {{ backup_dir }}/{{ backup_timestamp }}/postgresql_all.sql
+      environment:
+        PGPASSWORD: "{{ postgres_password }}"
+
+    - name: Stop Redis
+      systemd:
+        name: redis-server
+        state: stopped
+
+    - name: Restore Redis data
+      copy:
+        src: "{{ backup_dir }}/{{ backup_timestamp }}/redis_dump.rdb"
+        dest: /var/lib/redis/dump.rdb
+        remote_src: yes
+        owner: redis
+        group: redis
+
+    - name: Start Redis
+      systemd:
+        name: redis-server
+        state: started
+
+    - name: Restore NGINX configuration
+      unarchive:
+        src: "{{ backup_dir }}/{{ backup_timestamp }}/nginx_config.tar.gz"
+        dest: /etc/
+        remote_src: yes
+
+    - name: Restore application configurations
+      unarchive:
+        src: "{{ backup_dir }}/{{ backup_timestamp }}/apps_config.tar.gz"
+        dest: "{{ deployment.user_home }}/"
+        remote_src: yes
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+
+    - name: Reload NGINX
+      systemd:
+        name: nginx
+        state: reloaded
+
+    - name: Start all services
+      systemd:
+        name: "{{ item.name }}"
+        state: started
+      loop: "{{ services }}"
+
+    - name: Clean up decrypted backup
+      file:
+        path: "{{ backup_dir }}/{{ backup_timestamp }}"
+        state: absent

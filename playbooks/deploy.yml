@@ -1,0 +1,150 @@
+# ============================================================================
+# FILE: playbooks/deploy.yml
+# Deploy all services from GitHub
+# ============================================================================
+
+- name: Deploy All Services
+  hosts: production
+  become: yes
+  vars_files:
+    - ../config.yaml
+  vars:
+    deploy_user: "{{ deployment.user }}"
+    deploy_user_home: "{{ deployment.user_home }}"
+    github_org: "{{ github.organization }}"
+    go_bin_path: /usr/local/go/bin/go
+
+  tasks:
+    - name: Clone/Update service repositories
+      become_user: "{{ deploy_user }}"
+      git:
+        repo: "git@github.com:{{ github_org }}/{{ item.github_repo }}.git"
+        dest: "{{ deploy_user_home }}/apps/{{ item.name }}"
+        version: main
+        accept_hostkey: yes
+        key_file: "{{ deploy_user_home }}/.ssh/id_rsa"
+        force: yes
+      loop: "{{ services }}"
+      register: git_clone
+    
+    - name: 
+      become_user: postgres
+      postgresql_db: 
+        name: "{{ item.database_name }}"
+        state: present
+      loop: "{{ services }}"
+      when: item.database_enabled | default(false)
+      ignore_errors: yes
+
+    - name: Build Go services
+      become_user: "{{ deploy_user }}"
+      shell: |
+        export PATH=$PATH:/usr/local/go/bin
+        {{ go_bin_path }} build -o {{ item.name }} .
+      args:
+        chdir: "{{ deploy_user_home }}/apps/{{ item.name }}"
+      loop: "{{ services }}"
+      when: item.type == 'go'
+
+    - name: Install Node.js dependencies
+      become_user: "{{ deploy_user }}"
+      npm:
+        path: "{{ deploy_user_home }}/apps/{{ item.name }}"
+        state: present
+      loop: "{{ services }}"
+      when: item.type == 'node'
+
+    - name: Build Node.js services
+      become_user: "{{ deploy_user }}"
+      command: npm run build
+      args:
+        chdir: "{{ deploy_user_home }}/apps/{{ item.name }}"
+      loop: "{{ services }}"
+      when: item.type == 'node'
+      ignore_errors: yes
+
+    - name: Run database migrations             # Put your commands on here.
+      become_user: "{{ deploy_user }}"          # TODO: put migration commands on config.yaml to support dynamic migration commands
+      shell: |
+        if [ -f "migrations.sh" ]; then
+          bash migrations.sh
+        elif [ -f "migrate" ]; then
+          ./migrate up
+        elif [ -d "migrations" ] && [ "{{ item.type }}" = "go" ]; then
+          export PATH=$PATH:/usr/local/go/bin
+          {{ go_bin_path }} run migrations/*.go
+        elif [ -d "migrations" ] && [ "{{ item.type }}" = "node" ]; then
+          npm run migrate
+        fi
+      args:
+        chdir: "{{ deploy_user_home }}/apps/{{ item.name }}"
+      loop: "{{ services }}"
+      when: 
+        - item.database_enabled | default(false)
+        - item.run_migrations | default(false)
+      ignore_errors: yes
+
+    - name: Create systemd service files for backends
+      template: 
+        src: ../template/systemd-service.j2
+        dest: "/etc/systemd/system/{{ item.name }}.service"
+        owner: root
+        group: root
+        mode: '0644'
+      loop: "{{ services }}"
+      vars:
+        service_item: "{{ item }}"
+        is_frontend: false
+      notify: reload systemd
+
+    - name: Enable and start backend services
+      systemd:
+        name: "{{ item.name }}"
+        enabled: yes
+        state: restarted
+        daemon_reload: yes
+      loop: "{{ services }}"
+
+
+    - name: Build frontend applications
+      become_user: "{{ deploy_user }}"
+      shell: |
+        if [ -d "frontend" ]; then
+          cd frontend
+          npm install
+          npm run build
+        fi
+      args:
+        chdir: "{{ deploy_user_home }}/apps/{{ item.name }}"
+      loop: "{{ services }}"
+      when: item.frontend_enabled | default(false)
+      ignore_errors: yes
+
+    - name: Create systemd service for frontends
+      template:
+        src: ../templates/systemd-service.j2
+        dest: "/etc/systemd/system/{{ item.name }}-frontend.service"
+        owner: root
+        group: root
+        mode: '0644'
+      loop: "{{ services }}"
+      when: item.frontend_enabled | default(false)
+      vars:
+        service_item: "{{ item }}"
+        is_frontend: true
+      notify: reload systemd
+
+    - name: Enable and start frontend services
+      systemd:
+        name: "{{ item.name }}-frontend"
+        enabled: yes
+        state: restarted
+        daemon_reload: yes
+      loop: "{{ services }}"
+      when: item.frontend_enabled | default(false)
+
+
+  handlers:
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes

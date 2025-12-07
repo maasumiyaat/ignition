@@ -1,0 +1,84 @@
+# ============================================================================
+# FILE: playbooks/backup.yml
+# Backup databases and configurations
+# ============================================================================
+
+- name: Backup Databases and Configurations
+  hosts: production
+  become: yes
+  vars_files:
+    - ../config.yaml
+  vars:
+    timestamp: "{{ ansible_date_time.epoch }}"
+    deploy_user: "{{ deployment.user }}"
+    backup_dir: "{{ backup.directory }}"
+    postgres_password: "{{ database.postgresql.admin_password }}"
+    backup_encryption_key: "{{ backup.encryption_key }}"
+    backup_retention_days: "{{ backup.retention_days }}"
+
+  tasks:
+    - name: Create backup directory for this run
+      file:
+        path: "{{ backup_dir }}/{{ timestamp }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+        mode: '0750'
+      
+    - name: Backup all PostgreSQL databases
+      become_user: postgres
+      shell: |
+        pg_dumpall > {{ backup_dir }}/{{ timestamp }}/postgresql_all.sql
+      environment:
+        PGPASSWORD: "{{ postgres_password }}"
+
+
+    - name: Backup individual databases
+      become_user: postgres
+      postgresql_db:
+        name: "{{ item.database_name }}"
+        state: dump
+        target: "{{ backup_dir }}/{{ timestamp }}/{{ item.name }}_db.sql"
+      loop: "{{ services }}"
+      when: item.database_enabled | default(false)
+      ignore_errors: yes
+
+  
+    - name: Backup Redis data
+      copy:
+        src: /var/lib/redis/dump.rdb
+        dest: "{{ backup_dir }}/{{ timestamp }}/redis_dump.rdb"
+        remote_src: yes
+      ignore_errors: yes
+
+    - name: Backup NGINX configurations
+      archive:
+        path: /etc/nginx
+        dest: "{{ backup_dir }}/{{ timestamp }}/nginx_config.tar.gz"
+
+    - name: Backup service configurations
+      archive:
+        path: "{{ deployment.user_home }}/apps"
+        dest: "{{ backup_dir }}/{{ timestamp }}/apps_config.tar.gz"
+        exclude_path:
+          - "{{ deployment.user_home }}/apps/*/node_modules"
+          - "{{ deployment.user_home }}/apps/*/.git"
+
+    - name: Encrypt backup directory
+      shell: |
+        tar czf - {{ timestamp }} | openssl enc -aes-256-cbc -salt -k "{{ backup_encryption_key }}" -out {{ timestamp }}.tar.gz.enc
+      args:
+        chdir: "{{ backup_dir }}"
+
+    - name: Remove unencrypted backup
+      file:
+        path: "{{ backup_dir }}/{{ timestamp }}"
+        state: absent
+
+    - name: Remove old backups
+      shell: |
+        find {{ backup_dir }} -name "*.tar.gz.enc" -mtime +{{ backup_retention_days }} -delete
+
+    - name: Display backup location
+      debug:
+        msg: "Backup created at {{ backup_dir }}/{{ timestamp }}.tar.gz.enc"
